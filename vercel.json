@@ -8,6 +8,14 @@
     ],
     "routes": [
         {
+            "src": "/game/api",
+            "dest": "/game_api.py"
+        },
+        {
+            "src": "/thankyou",
+            "dest": "/templates/thankyou.html"
+        },
+        {
             "src": "/(.*)",
             "dest": "/game_api.py"
         }
