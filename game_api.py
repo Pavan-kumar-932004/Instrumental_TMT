@@ -1,6 +1,6 @@
-from flask import Flask, render_template, jsonify, request, send_file
-import json
 import os
+import json
+from flask import Flask, render_template, jsonify, request, send_file
 
 app = Flask(__name__)
 
@@ -21,17 +21,33 @@ game_state = {
     "game_over": False
 }
 
-# Save game state to file
+# Filepath in the writable `/tmp` directory
+GAME_DATA_PATH = "/tmp/game_data.json"
+
+# Save game state to the writable `/tmp` directory
 def save_game_data_to_file():
-    with open('game_data.json', 'w') as file:
+    with open(GAME_DATA_PATH, 'w') as file:
         json.dump(game_state, file, indent=4)
 
-# Route to serve the game UI
+# Route to download the game data
+@app.route('/download', methods=['GET'])
+def download_game_data():
+    try:
+        # Ensure the file exists
+        if not os.path.exists(GAME_DATA_PATH):
+            save_game_data_to_file()
+
+        return send_file(GAME_DATA_PATH, as_attachment=True, download_name='game_data.json')
+    except Exception as e:
+        return jsonify({"error": f"Error downloading file: {str(e)}"}), 500
+
+
+# Route for the game UI
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Route to handle game data updates
+# Route for game data updates
 @app.route('/game/api', methods=['POST'])
 def game_api():
     try:
@@ -64,20 +80,6 @@ def game_api():
         return jsonify({"message": "Game state updated", "game_state": game_state})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# Route to download the game data
-@app.route('/download', methods=['GET'])
-def download_game_data():
-    try:
-        file_path = 'game_data.json'
-
-        # Ensure file exists before serving
-        if not os.path.exists(file_path):
-            save_game_data_to_file()
-
-        return send_file(file_path, as_attachment=True, download_name='game_data.json')
-    except Exception as e:
-        return jsonify({"error": f"Error downloading file: {str(e)}"}), 500
 
 # Route for thank you page
 @app.route('/thankyou')
