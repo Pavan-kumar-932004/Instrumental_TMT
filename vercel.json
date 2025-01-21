@@ -13,8 +13,8 @@
         },
         {
             "src": "/thankyou",
-            "dest": "/templates/thankyou.html"
-        },
+            "dest": "/thankyou"
+          },
         {
             "src": "/(.*)",
             "dest": "/game_api.py"
