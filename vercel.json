@@ -1,32 +1,31 @@
 {
     "version": 2,
     "builds": [
-      {
-        "src": "app.py",
-        "use": "@vercel/python"
-      }
+        {
+            "src": "game_api.py",
+            "use": "@vercel/python"
+        }
     ],
     "routes": [
-      {
-        "src": "/static/(.*)",
-        "dest": "/static/$1"
-      },
-      {
-        "src": "/download",
-        "dest": "/app.py"
-      },
-      {
-        "src": "/thankyou",
-        "dest": "/app.py"
-      },
-      {
-        "src": "/game/api",
-        "dest": "/app.py"
-      },
-      {
-        "src": "/(.*)",
-        "dest": "/app.py"
-      }
+        {
+            "src": "/static/(.*)",
+            "dest": "/static/$1"
+        },
+        {
+            "src": "/game/api",
+            "dest": "/game_api.py"
+        },
+        {
+            "src": "/thankyou",
+            "dest": "/game_api.py"
+        },
+        {
+            "src": "/download",
+            "dest": "/game_api.py"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/game_api.py"
+        }
     ]
-  }
-  
+}
