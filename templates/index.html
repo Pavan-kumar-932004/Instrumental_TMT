@@ -45,6 +45,7 @@
     <div id="controls">
         <button id="clearBtn">Clear</button>
         <button id="submitBtn">Submit</button>
+        <button id="downloadBtn">Download JSON</button> <!-- New Download Button -->
     </div>
 
     <script>
@@ -224,7 +225,33 @@
         // Start the game and initialize round start time
         roundStartTime = Date.now();
         generateOvals();
+        const downloadBtn = document.getElementById('downloadBtn');
 
+    downloadBtn.addEventListener('click', function () {
+        const roundEndTime = Date.now(); // Capture end time
+        const roundTime = (roundEndTime - roundStartTime) / 1000; // Calculate round time in seconds
+
+        const gameData = {
+            score: connections.length,
+            correct_steps: connections.length - wrongSteps,
+            wrong_steps: wrongSteps,
+            interstep_times: interstepTimes,
+            round_time: roundTime,
+            step_types: connections.map((_, index) => {
+                return index < connections.length - wrongSteps ? "correct" : "wrong";
+            }),
+            level_complete: currentLevel < levels.length - 1
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute('href', dataStr);
+        downloadAnchor.setAttribute('download', 'gameData.json');
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        document.body.removeChild(downloadAnchor);
+    });
+    
         clearBtn.addEventListener('click', function () {
             // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
