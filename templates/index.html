@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trail Making Task (TMT)</title>
+    <style>
+        h1 {
+            font-size: 3rem;
+            color: #333;
+        }
+        p {
+            font-size: 1.5rem;
+            color: #666;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+            margin: 0;
+        }
+        #gameCanvas {
+            border: 1px solid black;
+            background-color: white;
+            position: relative;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="1000" height="800"></canvas>
+    <div id="controls">
+        <button id="clearBtn">Clear</button>
+        <button id="submitBtn">Submit</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const clearBtn = document.getElementById('clearBtn');
+        const submitBtn = document.getElementById('submitBtn');
+    
+        let ovals = [];
+        let selectedOval = null;
+        let connections = [];
+        let interstepTimes = [];
+        let wrongSteps = 0; // Counter for wrong steps
+        let lastClickTime = null;
+        let currentLevel = 0;
+        let roundStartTime = null; // Start time for the level
+        const levels = [
+            { labels: ['A', '1', 'B', '2', 'C', '3', 'D', '4', 'E', '5'], colorHint: true },
+            { labels: ['A', '1', 'B', '2', 'C', '3', 'D', '4'], colorHint: false },
+            { labels: ['A', '1', 'B', '2', 'C', '3', 'D', '4', 'E', '5', 'F', '6', 'G', '7', 'H', '8'], colorHint: false }
+        ];
+    
+        function drawOval(x, y, size, label, color) {
+            ctx.beginPath();
+            ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = 'black';
+            ctx.font = '20px Arial';
+            ctx.fillText(label, x + size / 4, y + size / 2);
+        }
+    
+        function generateOvals() {
+            const { labels, colorHint } = levels[currentLevel];
+            const SPACE_SIZE = 75;
+            ovals = [];
+            const coordinates = [];
+    
+            if (colorHint) {
+                const pairs = [];
+                for (let i = 0; i < labels.length; i += 2) {
+                    const color = getRandomColor();
+                    pairs.push({ label: labels[i], color });
+                    pairs.push({ label: labels[i + 1], color });
+                }
+    
+                pairs.sort(() => Math.random() - 0.5);
+    
+                pairs.forEach(pair => {
+                    let x, y;
+                    do {
+                        x = Math.random() * (canvas.width - SPACE_SIZE);
+                        y = Math.random() * (canvas.height - SPACE_SIZE);
+                    } while (coordinates.some(coord => Math.abs(x - coord[0]) < SPACE_SIZE && Math.abs(y - coord[1]) < SPACE_SIZE));
+    
+                    coordinates.push([x, y]);
+                    ovals.push({ label: pair.label, x, y, color: pair.color });
+                    drawOval(x, y, SPACE_SIZE, pair.label, pair.color);
+                });
+            } else {
+                labels.forEach(label => {
+                    let x, y;
+                    do {
+                        x = Math.random() * (canvas.width - SPACE_SIZE);
+                        y = Math.random() * (canvas.height - SPACE_SIZE);
+                    } while (coordinates.some(coord => Math.abs(x - coord[0]) < SPACE_SIZE && Math.abs(y - coord[1]) < SPACE_SIZE));
+    
+                    coordinates.push([x, y]);
+                    ovals.push({ label, x, y, color: 'white' });
+                    drawOval(x, y, SPACE_SIZE, label, 'white');
+                });
+            }
+        }
+    
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+    
+        function drawConnection(oval1, oval2) {
+            ctx.beginPath();
+            ctx.moveTo(oval1.x + 37.5, oval1.y + 37.5);
+            ctx.lineTo(oval2.x + 37.5, oval2.y + 37.5);
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        canvas.addEventListener('click', function (event) {
+            const { offsetX, offsetY } = event;
+            const clickedOval = ovals.find(oval => {
+                const dx = offsetX - (oval.x + 37.5);
+                const dy = offsetY - (oval.y + 37.5);
+                return Math.sqrt(dx * dx + dy * dy) < 37.5;
+            });
+
+            if (clickedOval) {
+                const currentTime = Date.now();
+                if (lastClickTime) {
+                    interstepTimes.push((currentTime - lastClickTime) / 1000);
+                }
+                lastClickTime = currentTime;
+
+                const currentLabels = levels[currentLevel].labels;
+
+                if (selectedOval === null) {
+                    // Only enforce starting with "A" once at the beginning of a level
+                    if (connections.length === 0 && clickedOval.label !== "A") {
+                        return; // Ignore incorrect first clicks without prompting
+                    }
+                    selectedOval = clickedOval; // Set the first oval without any alert
+                } else {
+                    const previousIndex = currentLabels.indexOf(selectedOval.label);
+                    const currentIndex = currentLabels.indexOf(clickedOval.label);
+
+                    if (currentIndex === previousIndex + 1) {
+                        // Correct connection
+                        connections.push([selectedOval, clickedOval]);
+                        drawConnection(selectedOval, clickedOval);
+                        selectedOval = clickedOval;
+                    } else {
+                        // Allow breaking the chain but don't enforce "Start with A" again
+                        wrongSteps++;
+                        alert("Incorrect connection! Try again.");
+                        selectedOval = null; // Reset the selection
+                    }
+                }
+            }
+        });
+
+        submitBtn.addEventListener('click', function () {
+            const roundEndTime = Date.now(); // Capture end time
+            const roundTime = (roundEndTime - roundStartTime) / 1000; // Calculate round time in seconds
+
+            const gameData = {
+                score: connections.length,
+                correct_steps: connections.length - wrongSteps, // Correct steps are total - wrong steps
+                wrong_steps: wrongSteps,
+                interstep_times: interstepTimes,
+                round_time: roundTime, // Add round time to game data
+                step_types: connections.map((_, index) => {
+                    return index < connections.length - wrongSteps ? "correct" : "wrong";
+                }),
+                level_complete: currentLevel < levels.length - 1 // Check if more levels remain
+            };
+
+            fetch('/game/api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(gameData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+
+                if (currentLevel < levels.length - 1) {
+                    currentLevel++;
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    interstepTimes = [];
+                    connections = [];
+                    wrongSteps = 0;
+                    roundStartTime = Date.now(); // Restart round timer
+                    generateOvals();
+                    alert(`Proceeding to Level ${currentLevel + 1}`);
+                } else {
+                    // Redirect to Thank You page when all levels are completed
+                    window.location.href = '/thankyou';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        // Start the game and initialize round start time
+        roundStartTime = Date.now();
+        generateOvals();
+
+        clearBtn.addEventListener('click', function () {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Reset connections, wrong steps, and interstep times
+            connections = [];
+            wrongSteps = 0;
+            interstepTimes = [];
+            selectedOval = null;
+
+            // Redraw ovals for the current level
+            generateOvals();
+
+            alert("Level data cleared! Start again.");
+        });
+    </script>
+</body>
+</html>
